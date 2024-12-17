@@ -1,31 +1,22 @@
 const Tour = require('./../models/tourModel');
+const APIFeatures = require('./../utils/apiFeatures')
+
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage,price';
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  next();
+};
 
 exports.getAllTours = async (req, res) => {
   try {
-    // BUILD QUERY
-    // 1A) Filtering
-    const queryObj = { ...req.query }; // with that ... i can copy the req.query variable but if i change anything in queryObj it won't affect req.query variable.
-    const excludedFields = ['page', 'sort', 'limit', 'field'];
-    excludedFields.forEach((el) => delete queryObj[el]);
-
-    // 1B) Advanced Filtering
-    let queryString = JSON.stringify(queryObj);
-    queryString = queryString.replace(
-      /\b(gte|gt|lte|lt)\b/g,
-      (match) => `$${match}`,
-    );
-    const query = Tour.find(JSON.parse(queryString)); //req.query can filter with parameters received from the user and return results according to this filter. If it is empty then it will bring all.
-
-    //2) Sorting
-    if (req.query.sort) {
-      query.sort(req.query.sort);
-      // sort('price ratingsAverage')
-    } else {
-      query.sort('-createdAt');
-    }
-
     //EXECUTE QUERY
-    const tours = await query;
+    const features = new APIFeatures(Tour.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    const tours = await features.query;
 
     //SEND RESPONSE
     res.status(200).json({
